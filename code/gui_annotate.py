@@ -1,119 +1,112 @@
-import gui
 import sys
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
-import os
-import time
-import cv2 as cv
-import csv 
 
-FOLDER_PATH = "data/new/"
-COORD, FISH, ID = [], [], [] #COORD is defined as an array of tuples (width, height)
+class AnnotationWindow(QWidget):
+    def __init__(self):
+        super().__init__()
+        # Annotation window
+        self.AnnotationWindowTitle = 'Annotate'
+        self.AnnotationWindowLeft = 500
+        self.AnnotationWindowTop = 500
+        self.AnnotationWindowWidth = 240
+        self.AnnotationWindowHeight = 210
+        self.initAnnotationUI()
+        
+        # Annotation variables 
+        self.species = []
+        self.id, self.fish = None, None
 
-def scan_for_new_files(path):
-    for filename in os.listdir(path):
-        if filename.endswith(".png"):
-            return filename.replace(".png", "")
+    def initAnnotationUI(self):
+        self.species = ["cod", "haddock", "hake", "horse mackerel", "whiting", "saithe", "plaice", "lemon sole", "ling", "lubbe", "herring", "mackerel"]
+        self.setWindowTitle(self.AnnotationWindowTitle)
+        self.setGeometry(self.AnnotationWindowLeft, self.AnnotationWindowTop, self.AnnotationWindowWidth, self.AnnotationWindowHeight)
+
+        self.combobox = QComboBox(self)
+        self.combobox.resize(200, 50)
+        self.combobox.move(20, 20)
+        self.combobox.addItems(self.species)
+        self.combobox.setFont(QFont('Arial', 15))
+
+        self.textbox = QLineEdit(self)
+        self.textbox.setValidator(QIntValidator())
+        self.textbox.resize(200, 50)
+        self.textbox.setMaxLength(3)
+        self.textbox.setFont(QFont('Arial', 15))
+        self.textbox.move(20, 80)
+
+        self.buttonOK = QPushButton("OK", self)
+        self.buttonOK.resize(200, 50)
+        self.buttonOK.move(20, 140)
+        self.buttonOK.clicked.connect(self.annotationWindow_onClick)
+        #self.show()
+
+    def annotationWindow_onClick(self):
+        id = self.textbox.text()
+        if not id:
+            msg = QMessageBox()
+            msg.setWindowTitle("Warning")
+            msg.setText("       Missing ID      ") #Keep the whitespace otherwise the message window is too small
+            msg.setIcon(QMessageBox.Critical)
+            msg.exec()
+        else:
+            self.id = id 
+            self.fish = self.combobox.currentText() 
+            self.close()
+
+    def reset(self):
+        self.id = None
+        self.fish = None
+        self.textbox.setText(None)
 
 
-def annotate(_img_path, _app):
-    mode = "annotating"
-    img = cv.imread(_img_path)
-    img = cv.resize(img, (1280, 720))
+# https://pyshine.com/Make-GUI-for-OpenCv-And-PyQt5/
+# https://www.pythonguis.com/tutorials/creating-multiple-windows/
+class ImgViewer(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.title = 'Image'
+        self.left = 10
+        self.top = 10
+        self.width = 640
+        self.height = 480
+        self.initUI()
+        self.annotationWindow = None
+        self.coord = []
+        self.id = []
+        self.species = []
+        
+    def initUI(self):
+        self.setWindowTitle(self.title)
+        self.setGeometry(self.left, self.top, self.width, self.height)
     
-    cv.namedWindow("annotation window")
-    cv.setMouseCallback("annotation window", draw_point)
-    
-    while True:     
-        cv.imshow("annotation window", img)
-        k = cv.waitKey(20) & 0xFF
-        if k == 27: #ESC
-            break
-        if k == ord('m'):
-            if mode == "annotating":
-                mode = "correcting"
-                print(mode)
-                cv.setMouseCallback("annotation window", remove_point)
-            else:
-                mode = "annotating"
-                print(mode)
-                cv.setMouseCallback("annotation window", draw_point)
-    cv.destroyAllWindows()
-    
-    def draw_point(event, x, y, flags, param):
-        nonlocal img, _app
-        global COORD, FISH, ID
-        if event == cv.EVENT_LBUTTONDOWN:
-            coordinate = (x,y)
-            color = (0, 0, 255) 
-            ex = gui.AnnotationApp()
-            _app.exec()
-            species, id = ex.fish,ex.id
-            annotation = id + species
-            if species != "cancel":
-                img = cv.circle(img, coordinate, 5, color, -1)
-                img = cv.putText(img, annotation, (coordinate[0]+5, coordinate[1]+5), cv.FONT_HERSHEY_SIMPLEX, 1, color, 2, cv.LINE_AA, False)
-                COORD.append(coordinate)
-                FISH.append(species)
-                ID.append(id)
+        # Create widget
+        self.label = QLabel(self)
+        pixmap = QPixmap('../image.jpg')
+        self.label.setPixmap(pixmap)
+        self.resize(pixmap.width(),pixmap.height())
+        self.label.mousePressEvent = self.getPosition
+        self.show()
 
+    def getPosition(self, event):
+        width = event.pos().x()
+        height = event.pos().y()
+        if self.annotationWindow is None:
+            self.annotationWindow = AnnotationWindow()
+        self.annotationWindow.show()
+        if self.annotationWindow.id is not None and self.annotationWindow.fish is not None:
+            self.coord.append((width, height))
+            self.id.append(self.annotationWindow.id)
+            self.species.append(self.annotationWindow.fish)
+            self.annotationWindow = None
 
-    def remove_point(event, x, y, flags, param):    
-        nonlocal img
-        global COORD, FISH, ID
-        if event == cv.EVENT_LBUTTONDOWN:
-            for coordinate in COORD:
-                sum = abs(x-coordinate[0] + y-coordinate[1])
-                if sum < 10:
-                    idx = COORD.index(coordinate)
-                    cv.drawMarker(img, COORD[idx], (0, 0, 255), cv.MARKER_TILTED_CROSS, 50, 2)
-                    COORD.pop(idx)
-                    FISH.pop(idx)
-                    ID.pop(idx)
-                    break
-
-
-def confirm_annotation(img_path):
-    img = cv.resize(img, (1280, 720))
-    for (coordinate, species, id) in zip(COORD, fish, ID):
-        img = cv.circle(img, coordinate, 5, (0, 0, 255), -1)
-        annotation = id + species
-        img = cv.putText(img, annotation, (coordinate[0]+5, coordinate[1]+5), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv.LINE_AA, False)
-    cv.namedWindow("confirmation window")
-
-    while 1:
-        cv.imshow("confirmation window", img)
-        cv.waitKey()
-        #correct = input("Is this correct? Y/N \n")
-        correct = messagebox.askyesno(" ", "Is this correct annotation?")
-        if correct == True:
-            cv.destroyAllWindows()
-            return True
-        elif correct == False:
-            cv.destroyAllWindows()
-            return False
 
 
 if __name__=="__main__":
-    previous_file = None
-
-    while True:
-        file = scan_for_new_files(FOLDER_PATH)
-        if file != None and previous_file != file:
-            annotation_file = FOLDER_PATH + file + ".csv"
-            img_path = FOLDER_PATH + file + ".png"
-            annotate(_img_path = img_path, _app = app)
-
-            if confirm_annotation(img_path):
-                data_formated = []
-                for (fish, id, xy) in zip(FISH, ID, COORD):
-                    data_formated.append([fish, id, int(xy[0]*SCALE_WIDTH), int(xy[1]*SCALE_HEIGHT) ])
-                save_annotations(annotation_file, data_formated)
-                previous_file = file
-                reset()
-            else:
-                reset()
-        else:
-            time.sleep(2)
-            continue
+    app = QApplication(sys.argv)
+    #ex1 = AnnotationApp()
+    #annotationApp_inst = AnnotationApp()
+    imgViewer = ImgViewer()
+    app.exec()
+    #sys.exit(app.exec_())   

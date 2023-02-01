@@ -3,48 +3,21 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 
-class AnnotationApp(QWidget):
+
+class AnnotationWindow(QWidget):
     def __init__(self):
         super().__init__()
-        # Image viewer window
-        self.ImageViewerTitle = 'Image'
-        self.ImageViewerLeft = 10
-        self.ImageViewerTop = 10
-        self.ImageViewerWidth = 640
-        self.ImageViewerHeight = 480
-        self.initImageViewer()
-
         # Annotation window
         self.AnnotationWindowTitle = 'Annotate'
         self.AnnotationWindowLeft = 500
         self.AnnotationWindowTop = 500
         self.AnnotationWindowWidth = 240
         self.AnnotationWindowHeight = 210
-        #self.initAnnotationUI()
+        self.initAnnotationUI()
+        
         # Annotation variables 
         self.species = []
         self.id, self.fish = None, None
-
-
-    def initImageViewer(self):
-        self.setWindowTitle(self.ImageViewerTitle)
-        self.setGeometry(self.ImageViewerLeft, self.ImageViewerTop, self.ImageViewerWidth, self.ImageViewerHeight)
-    
-        # Create widget
-        self.label = QLabel(self)
-        pixmap = QPixmap('../image.jpg')
-        self.label.setPixmap(pixmap)
-        self.resize(pixmap.width(),pixmap.height())
-        self.label.mousePressEvent = self.imageViewer_getPosition
-        self.show()
-
-    
-    def imageViewer_getPosition(self, event):
-        width = event.pos().x()
-        height = event.pos().y()
-        print(width, height)
-        self.initAnnotationUI()
-
 
     def initAnnotationUI(self):
         self.species = ["cod", "haddock", "hake", "horse mackerel", "whiting", "saithe", "plaice", "lemon sole", "ling", "lubbe", "herring", "mackerel"]
@@ -68,8 +41,7 @@ class AnnotationApp(QWidget):
         self.buttonOK.resize(200, 50)
         self.buttonOK.move(20, 140)
         self.buttonOK.clicked.connect(self.annotationWindow_onClick)
-        self.show()
-
+        #self.show()
 
     def annotationWindow_onClick(self):
         id = self.textbox.text()
@@ -85,18 +57,27 @@ class AnnotationApp(QWidget):
             self.close()
 
 
-"""
+    def closeEvent(self, event):
+        print("I am closing the annotation widget")
+
+
 # https://pyshine.com/Make-GUI-for-OpenCv-And-PyQt5/
 # https://www.pythonguis.com/tutorials/creating-multiple-windows/
 class ImgViewer(QWidget):
     def __init__(self):
         super().__init__()
-        self.title = 'PyQt5 image - pythonspot.com'
+        self.title = 'Image'
         self.left = 10
         self.top = 10
         self.width = 640
         self.height = 480
         self.initUI()
+        self.annotationWindow = None
+
+        self.coord = None
+        self.COORDS = []
+        self.IDS = []
+        self.FISHES = []
         
     def initUI(self):
         self.setWindowTitle(self.title)
@@ -107,20 +88,49 @@ class ImgViewer(QWidget):
         pixmap = QPixmap('../image.jpg')
         self.label.setPixmap(pixmap)
         self.resize(pixmap.width(),pixmap.height())
-        self.label.mousePressEvent = self.getPosition
+        self.label.mousePressEvent = self.openAnnotationWindow
         self.show()
 
+        print("temp")
+
     def getPosition(self, event):
-        width = event.pos().x()
-        height = event.pos().y()
-        print(width, height)
-"""
+        if self.annotationWindow is None:
+            width = event.pos().x()
+            height = event.pos().y()
+            self.annotationWindow = AnnotationWindow()
+            self.coord = (width, height)
+            self.annotationWindow.show()
+        else:
+            print("COORDS ", self.COORDS)
+            print("IDS ", self.IDS)
+            print("FISHES ", self.FISHES)
+            if self.annotationWindow.id is not None and self.annotationWindow.fish is not None:
+                self.COORDS.append(self.coord)
+                self.IDS.append(self.annotationWindow.id)
+                self.FISHES.append(self.annotationWindow.fish)
+                self.annotationWindow = None
+                
+    def openAnnotationWindow(self, event):
+        if self.annotationWindow is None:
+            self.annotationWindow = AnnotationWindow()
+            self.annotationWindow.show()
+            print(self.annotationWindow.id)
+            print(self.annotationWindow.fish)
+    
+
+
+        
+
+
+    def closeEvent(self, event):
+        print("I am closing the image viewer")
+
 
 
 if __name__=="__main__":
     app = QApplication(sys.argv)
     #ex1 = AnnotationApp()
-    annotationApp_inst = AnnotationApp()
-    #imgViewer = ImgViewer()
+    #annotationApp_inst = AnnotationApp()
+    imgViewer = ImgViewer()
     app.exec()
     #sys.exit(app.exec_())   

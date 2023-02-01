@@ -3,48 +3,31 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 
-class AnnotationApp(QWidget):
+class Color(QWidget):
+
+    def __init__(self, color):
+        super(Color, self).__init__()
+        self.setAutoFillBackground(True)
+
+        palette = self.palette()
+        palette.setColor(QPalette.Window, QColor(color))
+        self.setPalette(palette)
+
+
+class AnnotationWindow(QWidget):
     def __init__(self):
         super().__init__()
-        # Image viewer window
-        self.ImageViewerTitle = 'Image'
-        self.ImageViewerLeft = 10
-        self.ImageViewerTop = 10
-        self.ImageViewerWidth = 640
-        self.ImageViewerHeight = 480
-        self.initImageViewer()
-
         # Annotation window
         self.AnnotationWindowTitle = 'Annotate'
         self.AnnotationWindowLeft = 500
         self.AnnotationWindowTop = 500
         self.AnnotationWindowWidth = 240
         self.AnnotationWindowHeight = 210
-        #self.initAnnotationUI()
+        self.initAnnotationUI()
+        
         # Annotation variables 
         self.species = []
         self.id, self.fish = None, None
-
-
-    def initImageViewer(self):
-        self.setWindowTitle(self.ImageViewerTitle)
-        self.setGeometry(self.ImageViewerLeft, self.ImageViewerTop, self.ImageViewerWidth, self.ImageViewerHeight)
-    
-        # Create widget
-        self.label = QLabel(self)
-        pixmap = QPixmap('../image.jpg')
-        self.label.setPixmap(pixmap)
-        self.resize(pixmap.width(),pixmap.height())
-        self.label.mousePressEvent = self.imageViewer_getPosition
-        self.show()
-
-    
-    def imageViewer_getPosition(self, event):
-        width = event.pos().x()
-        height = event.pos().y()
-        print(width, height)
-        self.initAnnotationUI()
-
 
     def initAnnotationUI(self):
         self.species = ["cod", "haddock", "hake", "horse mackerel", "whiting", "saithe", "plaice", "lemon sole", "ling", "lubbe", "herring", "mackerel"]
@@ -68,8 +51,7 @@ class AnnotationApp(QWidget):
         self.buttonOK.resize(200, 50)
         self.buttonOK.move(20, 140)
         self.buttonOK.clicked.connect(self.annotationWindow_onClick)
-        self.show()
-
+        #self.show()
 
     def annotationWindow_onClick(self):
         id = self.textbox.text()
@@ -84,10 +66,10 @@ class AnnotationApp(QWidget):
             self.fish = self.combobox.currentText() 
             self.close()
 
+    def closeEvent(self, event):
+        print("I am closing the annotation widget")
 
-"""
-# https://pyshine.com/Make-GUI-for-OpenCv-And-PyQt5/
-# https://www.pythonguis.com/tutorials/creating-multiple-windows/
+
 class ImgViewer(QWidget):
     def __init__(self):
         super().__init__()
@@ -107,20 +89,56 @@ class ImgViewer(QWidget):
         pixmap = QPixmap('../image.jpg')
         self.label.setPixmap(pixmap)
         self.resize(pixmap.width(),pixmap.height())
-        self.label.mousePressEvent = self.getPosition
-        self.show()
+        #self.label.mousePressEvent = self.getPosition
+        #self.show()
 
     def getPosition(self, event):
         width = event.pos().x()
         height = event.pos().y()
         print(width, height)
-"""
 
 
-if __name__=="__main__":
-    app = QApplication(sys.argv)
-    #ex1 = AnnotationApp()
-    annotationApp_inst = AnnotationApp()
-    #imgViewer = ImgViewer()
-    app.exec()
-    #sys.exit(app.exec_())   
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super(MainWindow, self).__init__()
+        self.setWindowTitle("My App")
+
+        """
+        v_layout = QVBoxLayout()
+        v_layout.addWidget(Color('red'))
+        v_layout.addWidget(Color('green'))
+        v_layout.addWidget(Color('blue'))
+        h_layout = QHBoxLayout()
+        h_layout.addWidget(Color('yellow'))
+        h_layout.addWidget(Color('orange'))
+        v_layout.addLayout(h_layout)
+        """
+        self.annotationWindow = AnnotationWindow()
+        self.imageViewer = ImgViewer()
+        self.imageViewer.label.mousePressEvent = self.allowAnnotation()
+        self.annotationWindow.buttonOK.setEnabled(False)
+
+        stack_left = QHBoxLayout()
+        stack_left.addWidget(self.imageViewer)
+        
+        stack_right = QVBoxLayout()
+        stack_right.addWidget(self.annotationWindow)
+        stack_right.addWidget(Color("blue"))
+        
+        stack_left.addLayout(stack_right)
+
+        widget = QWidget()
+        widget.setLayout(stack_left)
+        self.setCentralWidget(widget)
+    
+    def allowAnnotation(self):
+        print()
+        self.annotationWindow.buttonOK.setEnabled(True)
+
+
+app = QApplication(sys.argv)
+
+window = MainWindow()
+window.show()
+
+app.exec()
