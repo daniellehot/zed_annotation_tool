@@ -1,0 +1,2 @@
+https://www.stereolabs.com/docs/api/python/
+https://www.stereolabs.com/docs/video/camera-controls/
