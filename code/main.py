@@ -35,7 +35,7 @@ def create_folders():
 def on_press(key):
     global FLAG_PREVIEW, FLAG_SAVE, FLAG_ANNOTATION
     try:
-        print('alphanumeric key {0} pressed'.format(key.char))
+        #print('alphanumeric key {0} pressed'.format(key.char))
         #FLAG_KEY = key.char
         if (key.char == "s" and FLAG_PREVIEW == 1):
             FLAG_PREVIEW = 0
@@ -179,6 +179,9 @@ def main():
                         FLAG_ANNOTATION = 1
                         print("Waiting for annotation")
                     else:
+                        FLAG_PREVIEW = 1
+                        FLAG_SAVE = 0
+                        FLAG_ANNOTATION = 0
                         print("Folder is not empty, something went wrong.")
                         
                 if FLAG_ANNOTATION:

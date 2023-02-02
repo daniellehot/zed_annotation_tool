@@ -3,6 +3,7 @@ import os
 import time
 import tkinter_gui as gui
 import csv
+import math
 
 FOLDER_PATH = "data/new/"
 COLOR = (0, 0, 255)
@@ -72,8 +73,9 @@ class ImageViewer():
     def remove(self, event, x, y, flags, param):    
         if event == cv.EVENT_LBUTTONDOWN:
             for coordinate in self.coordinates:
-                sum = abs(x-coordinate[0] + y-coordinate[1])
-                if sum < 10:
+                #sum = abs(x-coordinate[0] + y-coordinate[1])
+                dist = math.sqrt(math.pow(x-coordinate[0], 2) + math.pow(y-coordinate[1],2))
+                if dist < 10:
                     idx =self.coordinates.index(coordinate)
                     cv.drawMarker(self.scaledImg, self.coordinates[idx], COLOR, cv.MARKER_TILTED_CROSS, 50, 2)
                     self.coordinates.pop(idx)
