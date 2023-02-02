@@ -120,6 +120,13 @@ def move_files(_current):
     os.rename(NEW_PATH + _current + "_a.csv", ANNOTATIONS_PATH + _current + ".csv")
 
     
+def checkIfNewFolderIsEmpty():
+    if len(os.listdir(NEW_PATH)) != 0:
+        return False
+    else:
+        return True
+
+
 def main():
     global FLAG_PREVIEW, FLAG_SAVE, FLAG_ANNOTATION
     create_folders()
@@ -161,16 +168,19 @@ def main():
                 
                 if FLAG_SAVE:
                     cv.destroyWindow("zed")
-                    current = save_img(img)
-                    save_depth(depth_map)
-                    save_confidence(confidence_map)
-                    save_pointcloud(point_cloud)
-                    save_intrinsics(calibration_params)
-                    FLAG_PREVIEW = 0
-                    FLAG_SAVE = 0
-                    FLAG_ANNOTATION = 1
-                    print("Waiting for annotation")
-                    
+                    if checkIfNewFolderIsEmpty():
+                        current = save_img(img)
+                        save_depth(depth_map)
+                        save_confidence(confidence_map)
+                        save_pointcloud(point_cloud)
+                        save_intrinsics(calibration_params)
+                        FLAG_PREVIEW = 0
+                        FLAG_SAVE = 0
+                        FLAG_ANNOTATION = 1
+                        print("Waiting for annotation")
+                    else:
+                        print("Folder is not empty, something went wrong.")
+                        
                 if FLAG_ANNOTATION:
                     annotation_file = NEW_PATH + current + "_a.csv"
                     if os.path.exists(annotation_file):

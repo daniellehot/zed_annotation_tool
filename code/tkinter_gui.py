@@ -27,10 +27,8 @@ class AnnotationApp():
         self.idEntered = StringVar()
         text = Entry(self.master, textvariable=self.idEntered).grid(row=1, column= 1)
         button = Button(self.master, text = "OK", command=self.checkAnnotation).grid(row=2, column=1)
-
         #self.master.mainloop()
 
-    #TODO Check if we can run this without mainloop https://stackoverflow.com/questions/29158220/tkinter-understanding-mainloop
     def checkAnnotation(self):
         valid_ID = self.checkID(self.idEntered.get())
         valid_species = self.checkMenuSelection(self.menuSelection.get())
