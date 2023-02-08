@@ -52,7 +52,7 @@ def start_stream():
     init_params = sl.InitParameters()
     init_params.depth_mode = sl.DEPTH_MODE.QUALITY  # https://www.stereolabs.com/docs/api/python/classpyzed_1_1sl_1_1DEPTH__MODE.html
     init_params.coordinate_units = sl.UNIT.METER  # Use meter units (for depth measurements)
-    init_params.depth_minimum_distance = 0.5
+    init_params.depth_minimum_distance = 0.4
     init_params.depth_maximum_distance = 1.0
     init_params.camera_resolution = sl.RESOLUTION.HD2K
 
@@ -61,6 +61,10 @@ def start_stream():
     if err != sl.ERROR_CODE.SUCCESS:
         print(err)
         exit(-1)
+    
+    zed.set_camera_settings(sl.VIDEO_SETTINGS.GAMMA,  5)
+    zed.set_camera_settings(sl.VIDEO_SETTINGS.EXPOSURE,  30)
+    zed.set_camera_settings(sl.VIDEO_SETTINGS.GAIN, 12)
     return zed
 
 
@@ -75,7 +79,9 @@ def get_filename(path):
 def save_img(_img):
     filename = get_filename(RGB_PATH)
     path = NEW_PATH + filename + ".png"
-    cv.imwrite(path, _img)
+    #cv.imwrite(path, _img)
+    cv.imwrite(path, _img, [int(cv.IMWRITE_PNG_COMPRESSION),0])
+
     print("Image saved")
     return filename
 
