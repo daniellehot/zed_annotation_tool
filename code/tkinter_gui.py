@@ -21,7 +21,8 @@ class AnnotationApp():
 
         self.menuSelection = StringVar(self.master)
         #self.menuSelection.set("cod") #TO SET A DEFAULT VALUE
-        menu = OptionMenu(self.master, self.menuSelection, "cod", "haddock", "hake", "horse mackerel", "whiting", "saithe", "plaice", "lemon sole", "ling", "lubbe", "herring", "mackerel")
+        #menu = OptionMenu(self.master, self.menuSelection, "cod", "haddock", "hake", "horse mackerel", "whiting", "saithe", "plaice", "lemon sole", "ling", "lubbe", "herring", "mackerel")
+        menu = OptionMenu(self.master, self.menuSelection, "cod", "haddock", "hake", "horse mackerel", "whiting", "saithe", "other")
         menu.grid(row=0, column=1)
         
         self.idEntered = StringVar()

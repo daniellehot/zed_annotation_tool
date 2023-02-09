@@ -69,7 +69,6 @@ class ImageViewer():
                 self.species.append(species)
                 self.ids.append(id)
 
-    #TODO Different distance function
     def remove(self, event, x, y, flags, param):    
         if event == cv.EVENT_LBUTTONDOWN:
             for coordinate in self.coordinates:

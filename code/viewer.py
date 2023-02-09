@@ -6,6 +6,28 @@ from pynput import keyboard
 import numpy as np
 import tkinter_gui as gui
 from tkinter import messagebox
+import csv
+
+## PATH CONSTANTS ##
+RGB_PATH = "data/rgb/"
+DEPTH_PATH = "data/depth/"
+CONF_PATH = "data/confidence/"
+PC_PATH = "data/pointclouds/"
+INTRINSICS_PATH = "data/intrinsics/"
+ANNOTATIONS_PATH = "data/annotations/"
+#NEW_PATH = "data/new/"
+#CURRENT_IMG = None 
+
+def create_folders():
+    if not os.path.exists("data"):
+        os.mkdir("data")
+        os.mkdir(RGB_PATH)
+        os.mkdir(DEPTH_PATH)
+        os.mkdir(CONF_PATH)
+        os.mkdir(PC_PATH)
+        os.mkdir(INTRINSICS_PATH)
+        os.mkdir(ANNOTATIONS_PATH)
+        #os.mkdir(NEW_PATH)
 
 class Viewer():
     def __init__(self):
@@ -51,11 +73,11 @@ class Viewer():
     def on_press(self, key):
         try:
             #print('alphanumeric key {0} pressed'.format(key.char))
-            if key.char == "s" and len(self.coordinates) != 0:
-                self.save_data()
+            if key.char == "s" and len(self.coordinates) != 0 and not self.saved:
                 self.saved = 1
                 self.color = (0, 255, 0)
-            
+                self.save_data()
+                
             if key.char == "m":
                 if self.mode == "annotating":
                     self.mode = "correcting"
@@ -92,6 +114,7 @@ class Viewer():
         self.confidence_map = np.array(self.confidence.get_data())
         self.zed.retrieve_measure(self.point_cloud, sl.MEASURE.XYZRGBA)
         self.calibration_params = self.zed.get_camera_information().camera_configuration.calibration_parameters.left_cam
+        self.intrinsics = np.array([self.calibration_params.fx, self.calibration_params.fy, self.calibration_params.cx, self.calibration_params.cy], dtype=np.float32)
 
     def show(self):
         #window_title = "zed " + self.mode
@@ -157,10 +180,50 @@ class Viewer():
                 return id, species
 
     def save_data(self):
-        print("TODO")
+        filename = self.get_filename(RGB_PATH)
+        self.image.write(RGB_PATH + filename + ".png", compression_level = 0)
+        print("RGB saved")
+        np.savetxt(DEPTH_PATH + filename + ".csv", self.depth_map, delimiter=",")
+        print("DEPTH MAP saved")
+        np.savetxt(CONF_PATH + filename + ".csv", self.confidence_map, delimiter=",")
+        print("CONFIDENCE MAP saved")
+        self.point_cloud.write(PC_PATH + filename + ".ply", compression_level = 0)
+        print("POINT CLOUD saved")
+        np.savetxt(INTRINSICS_PATH + filename + ".csv", self.intrinsics, delimiter=",", header="fx, fy, cx, cy")
+        print("INTRINSICS saved")
+        self.save_annotations(ANNOTATIONS_PATH + filename + ".csv")
+        print("ANNOTATIONS saved")
+
+    def save_annotations(self, path):
+        print("save annotations")
+        data = self.format_annotations()
+        print("annotations formatted")
+        with open(path, 'a') as f: 
+            writer = csv.writer(f)
+            header = ['species', 'id', 'width', 'height'] 
+            writer.writerow(header)
+            for annotation in data:
+                writer.writerow(annotation)
+    
+    def format_annotations(self):
+        print("format annotation")
+        scale_width = self.img_cv.shape[1]/self.scaled_img.shape[1]
+        scale_height = self.img_cv.shape[0]/self.scaled_img.shape[0]
+        data_formated = []
+        for (species, id, xy) in zip(self.species, self.ids, self.coordinates):
+            data_formated.append([species, id, int(xy[0]*scale_width), int(xy[1]*scale_height) ])
+        return data_formated
+
+    def get_filename(self, path):
+        number_of_files = len(os.listdir(path))
+        #print(number_of_files)
+        number_of_files += 1
+        number_of_files = str(number_of_files).zfill(5)
+        return  number_of_files
 
 
 if __name__=="__main__":
+    create_folders()
     viewer = Viewer()
     while True:
         if viewer.zed.grab(viewer.runtime_parameters) == sl.ERROR_CODE.SUCCESS:
