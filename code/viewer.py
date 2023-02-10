@@ -57,10 +57,8 @@ class Viewer():
             print(err)
             exit(-1)
         
-        self.zed.set_camera_settings(sl.VIDEO_SETTINGS.GAMMA,  5)
-        self.zed.set_camera_settings(sl.VIDEO_SETTINGS.EXPOSURE,  30)
-        self.zed.set_camera_settings(sl.VIDEO_SETTINGS.GAIN, 12)
-        
+        self.set_camera_settings()
+
         self.runtime_parameters = sl.RuntimeParameters() # Create and set RuntimeParameters after opening the camera
         self.runtime_parameters.sensing_mode = sl.SENSING_MODE.FILL # STANDARD 50 CONFIDENCE THRESHOLD, FILL 100 CONFIDENCE THRESHOLD
 
@@ -69,6 +67,18 @@ class Viewer():
         self.confidence = sl.Mat()
         self.point_cloud = sl.Mat()
         self.calibration_params = None
+
+    def set_camera_settings(self):
+        self.zed.set_camera_settings(sl.VIDEO_SETTINGS.BRIGHTNESS, 4)
+        self.zed.set_camera_settings(sl.VIDEO_SETTINGS.CONTRAST, 4)
+        self.zed.set_camera_settings(sl.VIDEO_SETTINGS.HUE, 0)
+        self.zed.set_camera_settings(sl.VIDEO_SETTINGS.SATURATION, 4)
+        self.zed.set_camera_settings(sl.VIDEO_SETTINGS.SHARPNESS, 4)
+        self.zed.set_camera_settings(sl.VIDEO_SETTINGS.GAMMA,  5)
+        self.zed.set_camera_settings(sl.VIDEO_SETTINGS.EXPOSURE,  30)
+        self.zed.set_camera_settings(sl.VIDEO_SETTINGS.GAIN, 10)
+        self.zed.set_camera_settings(sl.VIDEO_SETTINGS.WHITEBALANCE_TEMPERATURE, 3600)
+        #self.zed.set_camera_settings(sl.VIDEO_SETTINGS.WHITEBALANCE_AUTO, 1)
     
     def on_press(self, key):
         try:
@@ -78,19 +88,21 @@ class Viewer():
                 self.color = (0, 255, 0)
                 self.save_data()
                 
-            if key.char == "m":
-                if self.mode == "annotating":
-                    self.mode = "correcting"
-                    self.color = (255, 0, 0)
-                else:
-                    self.mode = "annotating"
-                    self.color = (0, 0, 255)
-            
+            if not self.saved:
+                if key.char == "m":
+                    if self.mode == "annotating":
+                        self.mode = "correcting"
+                        self.color = (255, 0, 0)
+                    else:
+                        self.mode = "annotating"
+                        self.color = (0, 0, 255)
+                
             if key.char == "r":
                 self.coordinates.clear()
                 self.species.clear()
                 self.ids.clear()
                 self.saved = 0
+                self.RGB_saved = 0
                 self.mode = "annotating"
                 self.color = (0, 0, 255)
 
@@ -116,6 +128,10 @@ class Viewer():
         self.calibration_params = self.zed.get_camera_information().camera_configuration.calibration_parameters.left_cam
         self.intrinsics = np.array([self.calibration_params.fx, self.calibration_params.fy, self.calibration_params.cx, self.calibration_params.cy], dtype=np.float32)
 
+    def retrieve_only_RGB(self):
+        if self.RGB_saved:
+            self.zed.retrieve_image(self.image, sl.VIEW.LEFT)
+        
     def show(self):
         #window_title = "zed " + self.mode
         self.window_title = "zed"
@@ -160,7 +176,8 @@ class Viewer():
     
     def popup(self, event, x, y, flags, param):
         if event == cv.EVENT_LBUTTONDOWN:
-            messagebox.showerror("Error", "Remove fish and reset by pressing 'r' key.")
+            print("Remove fish and reset by pressing 'r' key.")
+            #messagebox.showerror("Error", "Remove fish and reset by pressing 'r' key.")
 
     def get_annotation(self):
         self.guiInstance = gui.AnnotationApp()
@@ -183,6 +200,8 @@ class Viewer():
         filename = self.get_filename(RGB_PATH)
         self.image.write(RGB_PATH + filename + ".png", compression_level = 0)
         print("RGB saved")
+        self.RGB_saved = True
+
         np.savetxt(DEPTH_PATH + filename + ".csv", self.depth_map, delimiter=",")
         print("DEPTH MAP saved")
         np.savetxt(CONF_PATH + filename + ".csv", self.confidence_map, delimiter=",")
@@ -195,9 +214,8 @@ class Viewer():
         print("ANNOTATIONS saved")
 
     def save_annotations(self, path):
-        print("save annotations")
         data = self.format_annotations()
-        print("annotations formatted")
+        #print("annotations formatted")
         with open(path, 'a') as f: 
             writer = csv.writer(f)
             header = ['species', 'id', 'width', 'height'] 
@@ -206,7 +224,6 @@ class Viewer():
                 writer.writerow(annotation)
     
     def format_annotations(self):
-        print("format annotation")
         scale_width = self.img_cv.shape[1]/self.scaled_img.shape[1]
         scale_height = self.img_cv.shape[0]/self.scaled_img.shape[0]
         data_formated = []
@@ -227,7 +244,10 @@ if __name__=="__main__":
     viewer = Viewer()
     while True:
         if viewer.zed.grab(viewer.runtime_parameters) == sl.ERROR_CODE.SUCCESS:
-            viewer.retrieve_measures()
+            if not viewer.saved:
+                viewer.retrieve_measures()
+            else:
+                viewer.retrieve_only_RGB()
             viewer.show()
             cv.waitKey(1)
         else:   
