@@ -97,6 +97,11 @@ class Viewer():
                         self.mode = "annotating"
                         self.color = (0, 0, 255)
                 
+            if key.char == "c":
+                self.remove_last()
+                self.saved = 0
+                self.color = (0, 255, 0)
+
             if key.char == "r":
                 self.coordinates.clear()
                 self.species.clear()
@@ -231,12 +236,19 @@ class Viewer():
             data_formated.append([species, id, int(xy[0]*scale_width), int(xy[1]*scale_height) ])
         return data_formated
 
+    def remove_last(self):
+        file_to_remove = (int(self.get_filename(RGB_PATH)) - 1).zfill(5)
+        print(file_to_remove)
+        print("TODO")
+
     def get_filename(self, path):
         number_of_files = len(os.listdir(path))
         #print(number_of_files)
         number_of_files += 1
         number_of_files = str(number_of_files).zfill(5)
         return  number_of_files
+
+
 
 
 if __name__=="__main__":
