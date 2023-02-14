@@ -1,5 +1,6 @@
 from tkinter import *
 from tkinter import messagebox
+import tkinter.font as font
 import math
 
 class AnnotationApp():
@@ -8,26 +9,32 @@ class AnnotationApp():
         self.initWindow()
         self.id = -1
         self.species = None
-        #self.breakTheLoop = False
+        self.breakTheLoop = False
         self.cancelled = None
 
     def initWindow(self):
         self.master = Tk()
         self.master.protocol("WM_DELETE_WINDOW", self.onClose)
-        self.master.geometry("200x100")
+        self.master.geometry("400x200")
+        font18 = font.Font(size = 18)
+        self.pad_x = 5
+        self.pad_y = 5
 
-        Label(self.master, text = "Fish").grid(row=0, column=0)
-        Label(self.master, text = "ID").grid(row=1, column=0)
+        Label(self.master, text = "Fish", font=font18).grid(row=0, column=0, ipadx=self.pad_x, ipady=self.pad_y)
+        Label(self.master, text = "ID", font=font18).grid(row=1, column=0, ipadx=self.pad_x, ipady=self.pad_y)
 
         self.menuSelection = StringVar(self.master)
         #self.menuSelection.set("cod") #TO SET A DEFAULT VALUE
         #menu = OptionMenu(self.master, self.menuSelection, "cod", "haddock", "hake", "horse mackerel", "whiting", "saithe", "plaice", "lemon sole", "ling", "lubbe", "herring", "mackerel")
         menu = OptionMenu(self.master, self.menuSelection, "cod", "haddock", "hake", "horse mackerel", "whiting", "saithe", "other")
-        menu.grid(row=0, column=1)
+        menu.grid(row=0, column=1, ipadx=self.pad_x, ipady=self.pad_y)
+        menu.config(font=font18)
+        menu_options = self.master.nametowidget(menu.menuname)  # Get menu widget.
+        menu_options.config(font=font18) 
         
         self.idEntered = StringVar()
-        text = Entry(self.master, textvariable=self.idEntered).grid(row=1, column= 1)
-        button = Button(self.master, text = "OK", command=self.checkAnnotation).grid(row=2, column=1)
+        text = Entry(self.master, textvariable=self.idEntered, font=font18).grid(row=1, column= 1, ipadx=self.pad_x, ipady=self.pad_y)
+        button = Button(self.master, text = "OK", command=self.checkAnnotation, font=font18).grid(row=2, column=1, ipadx=self.pad_x, ipady=self.pad_y)
         #self.master.mainloop()
 
     def checkAnnotation(self):
@@ -69,7 +76,7 @@ class AnnotationApp():
         messagebox.showerror("Error", text)
     
     def onClose(self):
-        #self.breakTheLoop = True
+        self.breakTheLoop = True
         self.cancelled = True
         #self.master.quit()
         
@@ -90,7 +97,7 @@ if __name__ == "__main__":
     i = 0
     annotationWindow = AnnotationApp()
     while True:
-        print(i, "Before tkinter loop")
+        #print(i, "Before tkinter loop")
         while not annotationWindow.breakTheLoop:
             annotationWindow.master.update()
             if annotationWindow.id != -1 and annotationWindow.species != None:
@@ -99,7 +106,7 @@ if __name__ == "__main__":
                 annotationWindow.master.quit()
                 annotationWindow.breakTheLoop = True 
         i = i + 1 
-        print(i, "After tkinter loop")
+        #print(i, "After tkinter loop")
         if i == 50:
             break
         
