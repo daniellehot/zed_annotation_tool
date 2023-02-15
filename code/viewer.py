@@ -97,6 +97,11 @@ class Viewer():
                         self.mode = "annotating"
                         self.color = (0, 0, 255)
                 
+            if key.char == "z" and self.saved:
+                self.remove_last()
+                self.saved = 0
+                self.color = (0, 0, 255)
+
             if key.char == "r":
                 self.coordinates.clear()
                 self.species.clear()
@@ -199,19 +204,19 @@ class Viewer():
     def save_data(self):
         filename = self.get_filename(RGB_PATH)
         self.image.write(RGB_PATH + filename + ".png", compression_level = 0)
-        print("RGB saved")
+        print("RGB saved ", RGB_PATH + filename + ".png")
         self.RGB_saved = True
 
         np.savetxt(DEPTH_PATH + filename + ".csv", self.depth_map, delimiter=",")
-        print("DEPTH MAP saved")
+        print("DEPTH MAP saved ", DEPTH_PATH + filename + ".csv")
         np.savetxt(CONF_PATH + filename + ".csv", self.confidence_map, delimiter=",")
-        print("CONFIDENCE MAP saved")
+        print("CONFIDENCE MAP saved ", CONF_PATH + filename + ".csv")
         self.point_cloud.write(PC_PATH + filename + ".ply", compression_level = 0)
-        print("POINT CLOUD saved")
+        print("POINT CLOUD saved", PC_PATH + filename + ".ply")
         np.savetxt(INTRINSICS_PATH + filename + ".csv", self.intrinsics, delimiter=",", header="fx, fy, cx, cy")
-        print("INTRINSICS saved")
+        print("INTRINSICS saved ", INTRINSICS_PATH + filename + ".csv")
         self.save_annotations(ANNOTATIONS_PATH + filename + ".csv")
-        print("ANNOTATIONS saved")
+        print("ANNOTATIONS saved ", ANNOTATIONS_PATH + filename + ".csv")
 
     def save_annotations(self, path):
         data = self.format_annotations()
@@ -231,12 +236,30 @@ class Viewer():
             data_formated.append([species, id, int(xy[0]*scale_width), int(xy[1]*scale_height) ])
         return data_formated
 
+    def remove_last(self):
+        file_to_remove = int(self.get_filename(RGB_PATH)) - 1
+        file_to_remove = str(file_to_remove).zfill(5)
+        os.remove(os.path.join(RGB_PATH, file_to_remove + ".png"))
+        print("Removed ", os.path.join(RGB_PATH, file_to_remove + ".png"))
+        os.remove(os.path.join(DEPTH_PATH, file_to_remove + ".csv"))
+        print("Removed ", os.path.join(DEPTH_PATH, file_to_remove + ".csv"))
+        os.remove(os.path.join(CONF_PATH, file_to_remove + ".csv"))
+        print("Removed ", os.path.join(CONF_PATH, file_to_remove + ".csv"))
+        os.remove(os.path.join(PC_PATH, file_to_remove + ".ply"))
+        print("Removed ", os.path.join(PC_PATH, file_to_remove + ".ply"))
+        os.remove(os.path.join(INTRINSICS_PATH, file_to_remove + ".csv"))
+        print("Removed ", os.path.join(INTRINSICS_PATH, file_to_remove + ".csv"))
+        os.remove(os.path.join(ANNOTATIONS_PATH, file_to_remove + ".csv"))
+        print("Removed ", os.path.join(ANNOTATIONS_PATH, file_to_remove + ".csv"))
+
     def get_filename(self, path):
         number_of_files = len(os.listdir(path))
         #print(number_of_files)
         number_of_files += 1
         number_of_files = str(number_of_files).zfill(5)
         return  number_of_files
+
+
 
 
 if __name__=="__main__":
