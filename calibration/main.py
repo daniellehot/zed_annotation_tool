@@ -6,11 +6,13 @@ def create_calibration_image(_height, _width):
     #img = (np.zeros((_height, _width, 3)) * 255).astype(np.uint8)
     img = (np.ones((_height, _width, 3)) * 255).astype(np.uint8)
     size = 10
-    top_left_corner = ((int (img.shape[1]/2 - size), int (img.shape[0]/2 - size)))
-    bottom_right_corner = ((int (img.shape[1]/2 + size), int (img.shape[0]/2 + size)))
+    #top_left_corner = ((int (img.shape[1]/2 - size), int (img.shape[0]/2 - size)))
+    #bottom_right_corner = ((int (img.shape[1]/2 + size), int (img.shape[0]/2 + size)))
+    top_left_corner = (610, 325)
+    bottom_right_corner = (675, 400)
     #print(top_left_corner)
     #print(bottom_right_corner)
-    cv.rectangle(img, top_left_corner, bottom_right_corner, (0,0, 255), 3)
+    cv.rectangle(img, top_left_corner, bottom_right_corner, (0,0, 255), 2)
     return img
 
 def start_stream():
@@ -38,7 +40,7 @@ if __name__=="__main__":
     runtime_parameters = sl.RuntimeParameters() # Create and set RuntimeParameters after opening the camera
     runtime_parameters.sensing_mode = sl.SENSING_MODE.FILL # STANDARD 50 CONFIDENCE THRESHOLD, FILL 100 CONFIDENCE THRESHOLD
     image = sl.Mat()
-    alpha = 0.7
+    alpha = 0.5
     beta = 1 - alpha
 
     while True:
@@ -51,3 +53,4 @@ if __name__=="__main__":
             cv.imshow("zed", combined_img) 
             if cv.waitKey(1) == ord('q'):
                 break
+    cam.close() 
