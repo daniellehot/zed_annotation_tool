@@ -7,36 +7,41 @@ import numpy as np
 import tkinter_gui as gui
 from tkinter import messagebox
 import csv
+from datetime import datetime
+
 
 ## PATH CONSTANTS ##
-RGB_PATH = "data/rgb/"
-DEPTH_PATH = "data/depth/"
-CONF_PATH = "data/confidence/"
-PC_PATH = "data/pointclouds/"
-INTRINSICS_PATH = "data/intrinsics/"
-ANNOTATIONS_PATH = "data/annotations/"
-#NEW_PATH = "data/new/"
-#CURRENT_IMG = None 
+ROOT_PATH = "/media/daniel/4F468D1074109532/autofisk/data/"
+ROOT_LOCAL = "/data/"
+RGB_PATH = os.path.join(ROOT_PATH, "rgb/")
+DEPTH_PATH = os.path.join(ROOT_PATH, "depth/")
+CONF_PATH = os.path.join(ROOT_PATH, "confidence/")
+#PC_PATH = "data/pointclouds/"
+INTRINSICS_PATH = os.path.join(ROOT_PATH, "intrinsics/")
+ANNOTATIONS_PATH = os.path.join(ROOT_PATH, "annotations/")
+LOGS_PATH = os.path.join(ROOT_PATH, "logs/")
 
 def create_folders():
-    if not os.path.exists("data"):
-        os.mkdir("data")
+    if not os.path.exists(ROOT_PATH):
+        os.mkdir(ROOT_PATH)
         os.mkdir(RGB_PATH)
         os.mkdir(DEPTH_PATH)
         os.mkdir(CONF_PATH)
-        os.mkdir(PC_PATH)
+        #os.mkdir(PC_PATH)
         os.mkdir(INTRINSICS_PATH)
         os.mkdir(ANNOTATIONS_PATH)
-        #os.mkdir(NEW_PATH)
+        os.mkdir(LOGS_PATH)
 
 class Viewer():
     def __init__(self):
         self.start_stream()
         self.start_keylistener()
+        self.create_session_log()
 
         self.coordinates = []
         self.species = []
         self.ids = []
+        self.sides = []
         self.saved = 0
 
         self.color = (0, 0, 255) #BGR
@@ -65,7 +70,7 @@ class Viewer():
         self.image = sl.Mat()
         self.depth = sl.Mat()
         self.confidence = sl.Mat()
-        self.point_cloud = sl.Mat()
+        #self.point_cloud = sl.Mat()
         self.calibration_params = None
 
     def set_camera_settings(self):
@@ -106,6 +111,7 @@ class Viewer():
                 self.coordinates.clear()
                 self.species.clear()
                 self.ids.clear()
+                self.sides.clear()
                 self.saved = 0
                 self.RGB_saved = 0
                 self.mode = "annotating"
@@ -121,6 +127,11 @@ class Viewer():
         keyboard_listener = keyboard.Listener(on_press=self.on_press)
         keyboard_listener.start()
 
+    def create_session_log(self):
+        self.log_data = None
+        filename = self.get_filename(LOGS_PATH) + ".csv"
+        self.path_to_session_log = os.path.join(LOGS_PATH, filename)
+        
     def retrieve_measures(self):
         # Retrieve left image
         self.zed.retrieve_image(self.image, sl.VIEW.LEFT)
@@ -129,7 +140,7 @@ class Viewer():
         self.depth_map = np.array(self.depth.get_data())
         self.zed.retrieve_measure(self.confidence, sl.MEASURE.CONFIDENCE)
         self.confidence_map = np.array(self.confidence.get_data())
-        self.zed.retrieve_measure(self.point_cloud, sl.MEASURE.XYZRGBA)
+        #self.zed.retrieve_measure(self.point_cloud, sl.MEASURE.XYZRGBA)
         self.calibration_params = self.zed.get_camera_information().camera_configuration.calibration_parameters.left_cam
         self.intrinsics = np.array([self.calibration_params.fx, self.calibration_params.fy, self.calibration_params.cx, self.calibration_params.cy], dtype=np.float32)
 
@@ -147,26 +158,27 @@ class Viewer():
             cv.setMouseCallback(self.window_title, self.popup)
         else:
             if self.mode == "annotating": 
-                cv.setMouseCallback(self.window_title, self.draw)
+                cv.setMouseCallback(self.window_title, self.get)
             if self.mode == "correcting":
                 cv.setMouseCallback(self.window_title, self.remove)  
         cv.imshow(self.window_title, self.scaled_img)
-
+        self.update_log()
+        
     def draw_annotations(self):
-        for (coordinate, species, id) in zip(self.coordinates, self.species, self.ids):
+        for (coordinate, species, id, side) in zip(self.coordinates, self.species, self.ids, self.sides):
             cv.circle(self.scaled_img, coordinate, 5, self.color, -1)
-            annotation = id + species
+            annotation = id + side + "-" + species
             cv.putText(self.scaled_img, annotation, (coordinate[0]+5, coordinate[1]+5), cv.FONT_HERSHEY_SIMPLEX, 1, self.color, 2, cv.LINE_AA, False)
 
-    def draw(self, event, x, y, flags, param):
+    def get(self, event, x, y, flags, param):
         if event == cv.EVENT_LBUTTONDOWN:
             coordinate = (x,y)
-            id, species = self.get_annotation()
-            annotation = id + species
+            id, species, side = self.get_annotation()
             if species != "cancel":
                 self.coordinates.append(coordinate)
                 self.species.append(species)
                 self.ids.append(id)
+                self.sides.append(side)
 
     def remove(self, event, x, y, flags, param):    
         if event == cv.EVENT_LBUTTONDOWN:
@@ -177,6 +189,7 @@ class Viewer():
                     self.coordinates.pop(idx)
                     self.species.pop(idx)
                     self.ids.pop(idx)
+                    self.sides.pop(idx)
                     break
     
     def popup(self, event, x, y, flags, param):
@@ -192,14 +205,15 @@ class Viewer():
                 #print("Annotation cancelled")
                 self.guiInstance.master.destroy()
                 self.guiInstance = None
-                return  str(-1), "cancel"
+                return  str(-1), "cancel", "none"
             if self.guiInstance.id != -1 and self.guiInstance.species != None:
                 #print("Annotation acquired")
                 id = self.guiInstance.id
                 species = self.guiInstance.species
+                side = self.guiInstance.side
                 self.guiInstance.master.destroy()
                 self.guiInstance = None
-                return id, species
+                return id, species, side
 
     def save_data(self):
         filename = self.get_filename(RGB_PATH)
@@ -211,8 +225,8 @@ class Viewer():
         print("DEPTH MAP saved ", DEPTH_PATH + filename + ".csv")
         np.savetxt(CONF_PATH + filename + ".csv", self.confidence_map, delimiter=",")
         print("CONFIDENCE MAP saved ", CONF_PATH + filename + ".csv")
-        self.point_cloud.write(PC_PATH + filename + ".ply", compression_level = 0)
-        print("POINT CLOUD saved", PC_PATH + filename + ".ply")
+        #self.point_cloud.write(PC_PATH + filename + ".ply", compression_level = 0)
+        #print("POINT CLOUD saved", PC_PATH + filename + ".ply")
         np.savetxt(INTRINSICS_PATH + filename + ".csv", self.intrinsics, delimiter=",", header="fx, fy, cx, cy")
         print("INTRINSICS saved ", INTRINSICS_PATH + filename + ".csv")
         self.save_annotations(ANNOTATIONS_PATH + filename + ".csv")
@@ -223,7 +237,7 @@ class Viewer():
         #print("annotations formatted")
         with open(path, 'a') as f: 
             writer = csv.writer(f)
-            header = ['species', 'id', 'width', 'height'] 
+            header = ['species', 'id', 'side', 'width', 'height'] 
             writer.writerow(header)
             for annotation in data:
                 writer.writerow(annotation)
@@ -232,8 +246,8 @@ class Viewer():
         scale_width = self.img_cv.shape[1]/self.scaled_img.shape[1]
         scale_height = self.img_cv.shape[0]/self.scaled_img.shape[0]
         data_formated = []
-        for (species, id, xy) in zip(self.species, self.ids, self.coordinates):
-            data_formated.append([species, id, int(xy[0]*scale_width), int(xy[1]*scale_height) ])
+        for (species, id, side, xy) in zip(self.species, self.ids, self.sides, self.coordinates):
+            data_formated.append([species, id, side, int(xy[0]*scale_width), int(xy[1]*scale_height) ])
         return data_formated
 
     def remove_last(self):
@@ -245,8 +259,8 @@ class Viewer():
         print("Removed ", os.path.join(DEPTH_PATH, file_to_remove + ".csv"))
         os.remove(os.path.join(CONF_PATH, file_to_remove + ".csv"))
         print("Removed ", os.path.join(CONF_PATH, file_to_remove + ".csv"))
-        os.remove(os.path.join(PC_PATH, file_to_remove + ".ply"))
-        print("Removed ", os.path.join(PC_PATH, file_to_remove + ".ply"))
+        #os.remove(os.path.join(PC_PATH, file_to_remove + ".ply"))
+        #print("Removed ", os.path.join(PC_PATH, file_to_remove + ".ply"))
         os.remove(os.path.join(INTRINSICS_PATH, file_to_remove + ".csv"))
         print("Removed ", os.path.join(INTRINSICS_PATH, file_to_remove + ".csv"))
         os.remove(os.path.join(ANNOTATIONS_PATH, file_to_remove + ".csv"))
@@ -258,8 +272,18 @@ class Viewer():
         number_of_files += 1
         number_of_files = str(number_of_files).zfill(5)
         return  number_of_files
-
-
+    
+    def update_log(self):
+        data = self.format_annotations()
+        if data != self.log_data:
+            with open(self.path_to_session_log, 'a') as f: 
+                writer = csv.writer(f)
+                f.write(str(datetime.now()) + "\n")
+                header = ['species', 'id', 'side', 'width', 'height'] 
+                writer.writerow(header)
+                for annotation in data:
+                    writer.writerow(annotation)
+        self.log_data = data
 
 
 if __name__=="__main__":
